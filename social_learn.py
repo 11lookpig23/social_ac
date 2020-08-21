@@ -67,12 +67,12 @@ torch.manual_seed(args.seed)
 envfolder = "elevator/"
 model_name = "lift_social_ag5h4"#"centSumR_ag5h4_"#"lift_iac"
 file_name = "save_weight/" +envfolder+ model_name
-ifload = False
+ifload = True#False
 save_eps = 20
-ifsave_model = True
+ifsave_model = False#True
 agentParam = {"gamma": args.gamma, "LR": 1e-2, "device": device,"ifload":ifload,"filename": file_name}
-n_episode = 201
-n_steps = 200
+n_episode = 1#201
+n_steps = 20#200
 state_dim = 4*height+1
 action_dim = 3
 line = 10
@@ -101,7 +101,7 @@ def add_para(id):
     return agentParam
 
 def main():
-    writer = SummaryWriter('runs/'+envfolder+model_name)
+    #writer = SummaryWriter('runs/'+envfolder+model_name)
     multiPGCen = CenAgents([Centralised_AC(action_dim,state_dim,add_para(i),useLaw=True,useCenCritc=False,num_agent=n_agents) for i in range(n_agents)],state_dim,agentParam)  # create PGagents as well as a social agent
     ## useCenCritc: use centra critic for normal agent
     multiPG = Agents([IAC(action_dim,state_dim,add_para(i),useLaw=True,useCenCritc=True,num_agent=n_agents) for i in range(n_agents)])  # create PGagents as well as a social agent
@@ -121,17 +121,19 @@ def main():
             if args.render and i_episode%30==0 and i_episode>0:  # render or not
                 env.render()
             ep_reward += sum(n_reward)  # record the total reward
+            '''
             if int(i_episode/line)%2==0:
                 multiPGCen.update_share(n_state, n_reward, n_state_, actions)
             else:
                 ## update_cent： update for centra normal agent
                 multiPG.update_cent(n_state, n_reward, n_state_, actions)
                 ## multiPG.update(n_state, n_reward, n_state_, actions)
+            '''
             n_state = n_state_
 
         running_reward = ep_reward
 
-        writer.add_scalar("ep_reward", ep_reward, i_episode)
+        #writer.add_scalar("ep_reward", ep_reward, i_episode)
         if i_episode % args.log_interval == 0:
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                 i_episode, ep_reward, running_reward))

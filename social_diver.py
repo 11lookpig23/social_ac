@@ -24,7 +24,7 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor (default: 0.99)')
 parser.add_argument('--seed', type=int, default=543, metavar='N',
                     help='random seed (default: 543)')
-parser.add_argument('--render', default=True, action='store_true',
+parser.add_argument('--render', default=False, action='store_true',
                     help='render the environment')
 parser.add_argument('--log-interval', type=int, default=2, metavar='N',
                     help='interval between training status logs (default: 10)')
@@ -97,7 +97,7 @@ state_dim = 4*height+1
 action_dim = 3
 '''
 #env.seed(args.seed)
-'''
+
 CentQ = True
 if CentQ:
     useCenCritc = True
@@ -106,7 +106,7 @@ n_agents = 5
 env = envSocialDilemma("cleanup",n_agents)
 torch.manual_seed(args.seed)
 envfolder = "cleanup/"
-model_name = "clean_ineq_"#"clean_centSumR_indi_"#"lift_iac"
+model_name = "clean_diver_"#"clean_centSumR_indi_"#"lift_iac"
 file_name = "save_weight/" +envfolder+ model_name
 ifload = False
 save_eps = 10
@@ -117,7 +117,7 @@ n_steps = 1000#200
 #state_dim = 4*height+1
 state_dim = 675
 action_dim = 9
-'''
+
 
 '''
 CentQ = True
@@ -140,6 +140,7 @@ state_dim = 675
 action_dim = 8
 
 '''
+'''
 CentQ = True
 if CentQ:
     useCenCritc = True
@@ -152,13 +153,18 @@ model_name = "fish_indi_"#"clean_centSumR_indi_"#"lift_iac"
 file_name = "save_weight/" +envfolder+ model_name
 ifload = False
 save_eps = 10
-ifsave_model = True
+ifsave_model = False
 agentParam = {"gamma": args.gamma, "LR": 1e-2, "device": device,"ifload":ifload,"filename": file_name}
 n_episode = 201
 n_steps = 300#1000
 state_dim = 25
 action_dim = 4
-
+'''
+import math
+mean_svo = 75*math.pi/180
+std_svo = math.pi/24
+SVO_theta = [np.random.normal(mean_svo,std_svo,1)[0] for i in range(n_agents)]#[15*math.pi/180,30*math.pi/180,45*math.pi/180,60*math.pi/180,75*math.pi/180]
+w_clean = 0.1
 
 def inequity(n_er,ri,I):
     alpha = 0
@@ -168,37 +174,45 @@ def inequity(n_er,ri,I):
     eq_rw = ri - alpha*sum(alphaterm)/(n_agents-1)- beta*sum(betaterm)/(n_agents-1)
     return eq_rw
 
+def rw_angle(r_n,I):
+    other_rw = (sum(r_n)-r_n[I])/(n_agents-1)
+    if r_n[I]==0:
+        theta = math.pi/2
+    else:
+        theta = math.atan(other_rw/r_n[I])
+    return theta
+
+def redistribute_rw(r_n,I):
+    u = r_n[I]-w_clean*abs(SVO_theta[I]-rw_angle(r_n,I))
+    return u
 
 def add_para(id):
     agentParam["id"] = str(id)
     return agentParam
-import time
+
 def main():
     # agent = PGagent(agentParam)
-    lamd = 1
     writer = SummaryWriter('runs/'+envfolder+model_name)
     ######  law only:  
     # multiPGCen = CenAgents([Centralised_AC(action_dim,state_dim,add_para(i),useLaw=False,useCenCritc=useCenCritc,num_agent=n_agents) for i in range(n_agents)],state_dim,agentParam)  # create PGagents as well as a social agent
     multiPG = Agents([IAC(action_dim,state_dim,add_para(i),useLaw=False,useCenCritc=useCenCritc,num_agent=n_agents) for i in range(n_agents)])  # create PGagents as well as a social agent
     for i_episode in range(n_episode):
-        #n_state, ep_reward = env.reset_linear(), 0
-        n_state, ep_reward = env.reset(), 0  # reset the env
-        n_er = [0 for i in range(n_agents) ]
+        n_state, ep_reward = env.reset_linear(), 0
+        #n_state, ep_reward = env.reset(), 0  # reset the env
         for t in range(n_steps):
             #actions = multiPGCen.choose_actions(n_state)
             actions = multiPG.choose_actions(n_state)
-            #n_state_, n_reward, _, _ = env.step_linear(actions)
-            n_state_, n_reward, _, _ = env.step(actions)  # interact with the env
+            n_state_, n_reward, _, _ = env.step_linear(actions)
+            #n_state_, n_reward, _, _ = env.step(actions)  # interact with the env
             if args.render and i_episode%10==0 and i_episode>0:  # render or not
                 env.render()
-                time.sleep(0.1)
             ep_reward += sum(n_reward)  # record the total reward
-            n_er = [ er*args.gamma*lamd+r for (er,r) in zip(n_er,n_reward) ]
             #n_eqreward = [inequity(n_er,ri,I) for (ri,I) in zip(n_reward,range(n_agents))]
+            n_diver_rw = [redistribute_rw(n_reward,i) for i in range(n_agents) ]
             if CentQ:
-                multiPG.update_cent(n_state, n_reward, n_state_, actions)
+                multiPG.update_cent(n_state, n_diver_rw, n_state_, actions)
             else:
-                multiPG.update(n_state, n_reward, n_state_, actions)
+                multiPG.update(n_state, n_diver_rw, n_state_, actions)
             '''
             if CentQ:
                 multiPG.update_cent(n_state, n_reward, n_state_, actions)

@@ -20,9 +20,9 @@ class IAC():
             self.CNN_preprocessA = CNN_preprocess(width,height,channel)
             self.CNN_preprocessC = CNN_preprocess(width,height,channel)
             state_dim = self.CNN_preprocessA.get_state_dim()
-        if agentParam["ifload"]:
-            self.actor = torch.load(agentParam["filename"]+"indi_actor_"+agentParam["id"]+".pth",map_location = torch.device('cuda'))
-            self.critic = torch.load(agentParam["filename"]+"indi_critic_"+agentParam["id"]+".pth",map_location = torch.device('cuda'))
+        #if agentParam["ifload"]:
+        #    self.actor = torch.load(agentParam["filename"]+"indi_actor_"+agentParam["id"]+".pth",map_location = torch.device('cuda'))
+        #    self.critic = torch.load(agentParam["filename"]+"indi_critic_"+agentParam["id"]+".pth",map_location = torch.device('cuda'))
         else:
             if useLaw:
                 self.actor = ActorLaw(action_dim,state_dim).to(self.device)

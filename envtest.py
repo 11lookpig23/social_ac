@@ -39,7 +39,7 @@ class envSocialDilemma:
     def __init__(self,envtype,n_agents):
         self.n_agents = n_agents
         if envtype == "harvest":
-            self.world = HarvestEnv(ascii_map=HARVEST_MAP2,num_agents=self.n_agents)
+            self.world = HarvestEnv(ascii_map=HARVEST_MAP,num_agents=self.n_agents)
         else:
             self.world = CleanupEnv(ascii_map=CLEANUP_MAP, num_agents=self.n_agents)
 
